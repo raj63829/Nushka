@@ -12,7 +12,8 @@ import Checkout from './components/pages/Checkout';
 import Dashboard from './components/pages/Dashboard';
 import Contact from './components/pages/Contact';
 import Footer from './components/Footer';
-import AuthForm from './components/AuthForm';  // ✅ added import
+import AuthForm from './components/AuthForm';
+import Signup from './components/pages/Signup';  // ✅ Import Signup Page
 import { Product } from './types';
 
 function App() {
@@ -56,10 +57,16 @@ function App() {
         return <Dashboard />;
       case 'orders':
         return <Dashboard />;
-      case 'auth': // ✅ New Auth Page
+      case 'auth': 
         return (
           <div className="flex items-center justify-center min-h-screen bg-gray-50">
             <AuthForm />
+          </div>
+        );
+      case 'signup': // ✅ New Signup Page
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-gray-50">
+            <Signup />
           </div>
         );
       case 'rituals':
