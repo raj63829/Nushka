@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase } from "./supabaseClient";
 
 // Sign Up with Email + Password + OTP
 export async function signUpWithEmail(email: string, password: string) {
