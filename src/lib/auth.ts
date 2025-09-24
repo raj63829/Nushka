@@ -1,6 +1,24 @@
 import { supabase } from "./supabase";
 
 // ============================
+// Types
+// ============================
+interface UserMetadata {
+  full_name?: string;
+  avatar_url?: string;
+}
+
+interface Address {
+  label?: string;
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+}
+
+// ============================
 // Sync user profile in 'users' table
 // ============================
 export async function syncUserProfile(user: any) {
@@ -11,8 +29,8 @@ export async function syncUserProfile(user: any) {
       {
         id: user.id,
         email: user.email,
-        name: user.user_metadata?.full_name || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
+        name: (user.user_metadata as UserMetadata)?.full_name || null,
+        avatar_url: (user.user_metadata as UserMetadata)?.avatar_url || null,
       },
       { onConflict: "id" }
     );
@@ -28,7 +46,7 @@ export async function syncUserProfile(user: any) {
 // ============================
 // Insert address into user_addresses table
 // ============================
-export async function addUserAddress(userId: string, address: any) {
+export async function addUserAddress(userId: string, address: Address) {
   try {
     const { error } = await supabase.from("user_addresses").insert([
       {
@@ -58,9 +76,7 @@ export async function signInWithGoogle() {
   try {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     return { success: true, data };
@@ -78,9 +94,7 @@ export async function signUpWithEmail(email: string, password: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     return { success: true, data };
@@ -95,10 +109,7 @@ export async function signUpWithEmail(email: string, password: string) {
 // ============================
 export async function signInWithEmail(email: string, password: string) {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
@@ -114,9 +125,7 @@ export async function signInWithOtp(email: string) {
   try {
     const { data, error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     return { success: true, data };
@@ -133,9 +142,7 @@ export async function signInWithPhone(phone: string) {
   try {
     const { data, error } = await supabase.auth.signInWithOtp({
       phone,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     if (error) throw error;
     return { success: true, data };
@@ -150,11 +157,7 @@ export async function signInWithPhone(phone: string) {
 // ============================
 export async function verifyPhoneOtp(phone: string, token: string) {
   try {
-    const { data, error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: "sms",
-    });
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
     if (error) throw error;
     return { success: true, data };
   } catch (err: any) {
