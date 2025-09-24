@@ -30,7 +30,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div 
+          <div
             className="text-2xl font-bold text-sage-800 cursor-pointer"
             onClick={() => onPageChange('home')}
           >
@@ -57,10 +57,10 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
           {/* Icons */}
           <div className="flex items-center space-x-4">
             <Search className="h-5 w-5 text-sage-600 hover:text-sage-800 cursor-pointer transition-colors" />
-            
+
             <div className="relative group">
-              <User 
-                className="h-5 w-5 text-sage-600 hover:text-sage-800 cursor-pointer transition-colors" 
+              <User
+                className="h-5 w-5 text-sage-600 hover:text-sage-800 cursor-pointer transition-colors"
                 onClick={() => {
                   if (!authState.isAuthenticated) {
                     setAuthMode('signin');
@@ -68,43 +68,45 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
                   }
                 }}
               />
-              
+
               {/* User Dropdown */}
-              <div className="absolute right-0 top-8 w-48 bg-white border border-sage-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="py-2">
+              <div className="absolute right-0 top-8 w-52 bg-white border border-sage-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="py-3 px-3">
                   {authState.isAuthenticated ? (
                     <>
-                      <div className="px-4 py-2 text-sm text-sage-800 font-medium border-b border-sage-200">
+                      <div className="px-3 py-2 text-sm text-sage-800 font-medium border-b border-sage-200">
                         {authState.user?.name}
                       </div>
                       <button
                         onClick={() => onPageChange('dashboard')}
-                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 transition-colors"
+                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 rounded-md transition-colors"
                       >
                         My Dashboard
                       </button>
                       <button
                         onClick={() => onPageChange('orders')}
-                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 transition-colors"
+                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 rounded-md transition-colors"
                       >
                         My Orders
                       </button>
-                      <div className="border-t border-sage-200 my-1"></div>
+                      <div className="border-t border-sage-200 my-2"></div>
                       <button
                         onClick={logout}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="block w-full text-left px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
                       >
                         Sign Out
                       </button>
                     </>
                   ) : (
-                    <>
+                    <div className="space-y-2">
                       <button
                         onClick={() => {
                           setAuthMode('signin');
                           setIsAuthModalOpen(true);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 transition-colors"
+                        className="w-full px-4 py-2 text-sm font-medium rounded-lg 
+                                   text-white bg-sage-600 hover:bg-sage-700 
+                                   shadow-sm transition-all duration-200"
                       >
                         Sign In
                       </button>
@@ -113,17 +115,19 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
                           setAuthMode('register');
                           setIsAuthModalOpen(true);
                         }}
-                        className="block w-full text-left px-4 py-2 text-sm text-sage-700 hover:bg-sage-50 transition-colors"
+                        className="w-full px-4 py-2 text-sm font-medium rounded-lg 
+                                   text-sage-700 border border-sage-300 
+                                   hover:bg-sage-50 shadow-sm transition-all duration-200"
                       >
                         Create Account
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => onPageChange('wishlist')}
               className="relative p-1 text-sage-600 hover:text-sage-800 transition-colors"
             >
@@ -134,8 +138,8 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
                 </span>
               )}
             </button>
-            
-            <button 
+
+            <button
               onClick={() => onPageChange('cart')}
               className="relative p-1 text-sage-600 hover:text-sage-800 transition-colors"
             >
@@ -181,9 +185,9 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
           </div>
         </div>
       )}
-      
+
       {/* Auth Modal */}
-      <AuthModal 
+      <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         initialMode={authMode}

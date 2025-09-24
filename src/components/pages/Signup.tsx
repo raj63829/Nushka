@@ -1,12 +1,60 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { signInWithGoogle } from "../../lib/auth";
+import { useState } from "react";
+import { signInWithPhone, verifyPhoneOtp } from "../../lib/auth";
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [message, setMessage] = useState("");
+  const [step, setStep] = useState<"phone" | "verify">("phone");
+
+  async function handleSendOtp() {
+    await signInWithPhone(phone);
+    setStep("verify");
+  }
+
+  async function handleVerifyOtp() {
+    await verifyPhoneOtp(phone, otp);
+  }
+
+  return (
+    <div>
+      {step === "phone" && (
+        <>
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Phone number"
+          />
+          <button onClick={handleSendOtp}>Send OTP</button>
+        </>
+      )}
+      {step === "verify" && (
+        <>
+          <input
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            placeholder="Enter OTP"
+          />
+          <button onClick={handleVerifyOtp}>Verify</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+
+export default function Signup() {
+  return (
+    <div>
+      <h1>Sign Up</h1>
+      <button onClick={signInWithGoogle}>
+        Sign in with Google
+      </button>
+    </div>
+  );
+}
 
   // Step 1: Sign up user (triggers Supabase OTP email)
   const handleSignup = async (e: React.FormEvent) => {

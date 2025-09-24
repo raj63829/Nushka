@@ -1,0 +1,183 @@
+-- USERS
+create table users (
+  id uuid primary key default uuid_generate_v4(),
+  email text unique not null,
+  full_name text,
+  phone text,
+  address text,
+  created_at timestamptz default now()
+);
+
+-- PRODUCTS
+create table products (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text,
+  price numeric(10,2) not null,
+  stock int not null default 0,
+  image_url text,
+  created_at timestamptz default now()
+);
+
+-- BUNDLES (Ritual Bundles)
+create table bundles (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text,
+  bundle_price numeric(10,2) not null,
+  image_url text,
+  created_at timestamptz default now()
+);
+
+-- BUNDLE → PRODUCTS mapping (many-to-many)
+create table bundle_items (
+  bundle_id uuid references bundles(id) on delete cascade,
+  product_id uuid references products(id) on delete cascade,
+  quantity int default 1,
+  primary key (bundle_id, product_id)
+);
+
+-- ORDERS
+create table orders (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references users(id) on delete cascade,
+  total_amount numeric(10,2) not null,
+  status text check (status in ('pending','paid','shipped','delivered','cancelled')) default 'pending',
+  created_at timestamptz default now()
+);
+
+-- ORDER ITEMS (products inside orders)
+create table order_items (
+  id uuid primary key default uuid_generate_v4(),
+  order_id uuid references orders(id) on delete cascade,
+  product_id uuid references products(id),
+  quantity int not null,
+  price numeric(10,2) not null
+);
+
+-- ORDER BUNDLE ITEMS (bundles inside orders)
+create table order_bundles (
+  id uuid primary key default uuid_generate_v4(),
+  order_id uuid references orders(id) on delete cascade,
+  bundle_id uuid references bundles(id),
+  quantity int not null,
+  price numeric(10,2) not null
+);
+
+-- PAYMENTS (Stripe/Razorpay tracking)
+create table payments (
+  id uuid primary key default uuid_generate_v4(),
+  order_id uuid references orders(id) on delete cascade,
+  provider text check (provider in ('razorpay','stripe','upi','cod')),
+  transaction_id text unique,
+  amount numeric(10,2) not null,
+  status text check (status in ('initiated','successful','failed')) default 'initiated',
+  created_at timestamptz default now()
+);
+
+-- WISHLIST
+create table wishlists (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references users(id) on delete cascade,
+  product_id uuid references products(id),
+  created_at timestamptz default now()
+);
+
+-- ========================
+-- RLS POLICIES
+-- ========================
+
+-- Enable Row Level Security
+alter table users enable row level security;
+alter table orders enable row level security;
+alter table wishlists enable row level security;
+alter table payments enable row level security;
+
+-- USERS: each user can only see/update their own profile
+create policy "Users can view own profile"
+  on users for select
+  using (auth.uid() = id);
+
+create policy "Users can update own profile"
+  on users for update
+  using (auth.uid() = id);
+
+-- ORDERS: each user can see only their own orders
+create policy "Users can view their orders"
+  on orders for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their orders"
+  on orders for insert
+  with check (auth.uid() = user_id);
+
+-- WISHLIST: each user manages their own wishlist
+create policy "Users can manage their wishlist"
+  on wishlists for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- PAYMENTS: users can see only their order payments
+create policy "Users can view their payments"
+  on payments for select
+  using (auth.uid() in (
+    select user_id from orders where orders.id = payments.order_id
+  ));
+
+create policy "Users can insert their payments"
+  on payments for insert
+  with check (auth.uid() in (
+    select user_id from orders where orders.id = order_id
+  ));
+
+-- ========================
+-- VIEWS
+-- ========================
+
+-- View: Bundle with its Products
+create view bundle_with_products as
+select
+  b.id as bundle_id,
+  b.name as bundle_name,
+  b.bundle_price,
+  b.description as bundle_description,
+  b.image_url as bundle_image,
+  json_agg(
+    json_build_object(
+      'product_id', p.id,
+      'name', p.name,
+      'price', p.price,
+      'quantity', bi.quantity
+    )
+  ) as products
+from bundles b
+join bundle_items bi on bi.bundle_id = b.id
+join products p on p.id = bi.product_id
+group by b.id;
+
+-- View: Order details with items + bundles
+create view order_full_details as
+select
+  o.id as order_id,
+  o.user_id,
+  o.total_amount,
+  o.status,
+  o.created_at,
+  json_agg(
+    json_build_object(
+      'product_id', oi.product_id,
+      'quantity', oi.quantity,
+      'price', oi.price
+    )
+  ) filter (where oi.id is not null) as products,
+  json_agg(
+    json_build_object(
+      'bundle_id', ob.bundle_id,
+      'quantity', ob.quantity,
+      'price', ob.price
+    )
+  ) filter (where ob.id is not null) as bundles
+from orders o
+left join order_items oi on oi.order_id = o.id
+left join order_bundles ob on ob.order_id = o.id
+group by o.id;

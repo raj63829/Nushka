@@ -1,5 +1,62 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { supabase, User } from '../lib/supabase';
+import { createContext, useEffect, useState, ReactNode } from "react";
+import { supabase } from "../lib/supabase";
+import { syncUserProfile } from "../lib/auth";
+
+
+useEffect(() => {
+  if (user) {
+    syncUserProfile(user);
+  }
+}, [user]);
+
+// Send OTP (via Supabase or custom Twilio backend)
+export async function signInWithPhone(phone: string) {
+  const { data, error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) throw error;
+  return data;
+}
+
+// Verify OTP
+export async function verifyPhoneOtp(phone: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone,
+    token,
+    type: "sms",
+  });
+  if (error) throw error;
+  return data;
+}
+
+
+
+export const AuthContext = createContext<any>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const session = supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, setUser }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
 
 interface AuthState {
   user: User | null;

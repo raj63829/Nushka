@@ -1,4 +1,33 @@
 import { supabase } from "./supabase";
+import { supabase } from "./supabase";
+
+
+export async function syncUserProfile(user: any) {
+  if (!user) return;
+
+  const { error } = await supabase.from("users").upsert(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata.full_name,
+      avatar_url: user.user_metadata.avatar_url,
+    },
+    { onConflict: "id" }
+  );
+
+  if (error) console.error("User sync failed:", error);
+}
+
+
+
+export async function signInWithGoogle() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+  });
+  if (error) throw error;
+  return data;
+}
+
 
 // Sign Up with Email + Password + OTP
 export async function signUpWithEmail(email: string, password: string) {
