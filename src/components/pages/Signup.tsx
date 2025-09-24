@@ -1,62 +1,22 @@
 import { useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { signInWithGoogle } from "../../lib/auth";
-import { useState } from "react";
-import { signInWithPhone, verifyPhoneOtp } from "../../lib/auth";
+import { signInWithGoogle, signInWithPhone, verifyPhoneOtp } from "../../lib/auth";
 
 export default function Signup() {
-  const [phone, setPhone] = useState("");
+  // States for email signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone" | "verify">("phone");
+  const [otpSent, setOtpSent] = useState(false);
 
-  async function handleSendOtp() {
-    await signInWithPhone(phone);
-    setStep("verify");
-  }
+  // States for phone signup
+  const [phone, setPhone] = useState("");
+  const [phoneStep, setPhoneStep] = useState<"phone" | "verify">("phone");
 
-  async function handleVerifyOtp() {
-    await verifyPhoneOtp(phone, otp);
-  }
+  // Messages
+  const [message, setMessage] = useState("");
 
-  return (
-    <div>
-      {step === "phone" && (
-        <>
-          <input
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="Phone number"
-          />
-          <button onClick={handleSendOtp}>Send OTP</button>
-        </>
-      )}
-      {step === "verify" && (
-        <>
-          <input
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            placeholder="Enter OTP"
-          />
-          <button onClick={handleVerifyOtp}>Verify</button>
-        </>
-      )}
-    </div>
-  );
-}
-
-
-export default function Signup() {
-  return (
-    <div>
-      <h1>Sign Up</h1>
-      <button onClick={signInWithGoogle}>
-        Sign in with Google
-      </button>
-    </div>
-  );
-}
-
-  // Step 1: Sign up user (triggers Supabase OTP email)
+  // ✅ Step 1: Email Signup (Supabase OTP email)
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
@@ -74,8 +34,8 @@ export default function Signup() {
     }
   };
 
-  // Step 2: Verify OTP entered by user
-  const handleVerifyOtp = async (e: React.FormEvent) => {
+  // ✅ Step 2: Verify Email OTP
+  const handleVerifyEmailOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
 
@@ -93,11 +53,41 @@ export default function Signup() {
     }
   };
 
+  // ✅ Step 3: Send Phone OTP
+  async function handleSendPhoneOtp() {
+    try {
+      await signInWithPhone(phone);
+      setPhoneStep("verify");
+    } catch (err) {
+      setMessage("❌ Failed to send OTP");
+    }
+  }
+
+  // ✅ Step 4: Verify Phone OTP
+  async function handleVerifyPhoneOtp() {
+    try {
+      await verifyPhoneOtp(phone, otp);
+      setMessage("✅ Phone verified successfully!");
+    } catch (err) {
+      setMessage("❌ Invalid phone OTP");
+    }
+  }
+
   return (
-    <div className="p-6 max-w-md mx-auto bg-white shadow rounded">
+    <div className="p-6 max-w-md mx-auto bg-white shadow rounded space-y-6">
+      <h1 className="text-2xl font-bold text-center">Sign Up</h1>
+
+      {/* 🔹 Google OAuth */}
+      <button
+        onClick={signInWithGoogle}
+        className="bg-red-500 text-white px-4 py-2 rounded w-full"
+      >
+        Sign in with Google
+      </button>
+
+      {/* 🔹 Email Signup */}
       {!otpSent ? (
-        <form onSubmit={handleSignup} className="space-y-4">
-          <h2 className="text-xl font-bold">Create Account</h2>
+        <form onSubmit={handleSignup} className="space-y-3">
           <input
             type="email"
             placeholder="Email"
@@ -118,15 +108,14 @@ export default function Signup() {
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded w-full"
           >
-            Sign Up
+            Sign Up with Email
           </button>
         </form>
       ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <h2 className="text-xl font-bold">Verify OTP</h2>
+        <form onSubmit={handleVerifyEmailOtp} className="space-y-3">
           <input
             type="text"
-            placeholder="Enter OTP"
+            placeholder="Enter Email OTP"
             className="border p-2 w-full tracking-widest"
             value={otp}
             onChange={(e) => setOtp(e.target.value)}
@@ -136,12 +125,47 @@ export default function Signup() {
             type="submit"
             className="bg-green-600 text-white px-4 py-2 rounded w-full"
           >
-            Verify
+            Verify Email OTP
           </button>
         </form>
       )}
 
-      {message && <p className="mt-4 text-center">{message}</p>}
+      {/* 🔹 Phone Signup */}
+      <div className="border-t pt-4">
+        {phoneStep === "phone" ? (
+          <div className="space-y-3">
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Phone number"
+              className="border p-2 w-full"
+            />
+            <button
+              onClick={handleSendPhoneOtp}
+              className="bg-purple-600 text-white px-4 py-2 rounded w-full"
+            >
+              Send Phone OTP
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <input
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter Phone OTP"
+              className="border p-2 w-full tracking-widest"
+            />
+            <button
+              onClick={handleVerifyPhoneOtp}
+              className="bg-green-600 text-white px-4 py-2 rounded w-full"
+            >
+              Verify Phone OTP
+            </button>
+          </div>
+        )}
+      </div>
+
+      {message && <p className="mt-4 text-center text-sm">{message}</p>}
     </div>
   );
 }

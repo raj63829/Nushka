@@ -1,82 +1,33 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { supabase, User } from '../lib/supabase';
-import { createContext, useEffect, useState, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  ReactNode,
+} from "react";
 import { supabase } from "../lib/supabase";
-import { syncUserProfile } from "../lib/auth";
 
-
-useEffect(() => {
-  if (user) {
-    syncUserProfile(user);
-  }
-}, [user]);
-
-// Send OTP (via Supabase or custom Twilio backend)
-export async function signInWithPhone(phone: string) {
-  const { data, error } = await supabase.auth.signInWithOtp({ phone });
-  if (error) throw error;
-  return data;
+// -----------------
+// Types
+// -----------------
+interface UserProfile {
+  user_id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  addresses?: any[];
 }
-
-// Verify OTP
-export async function verifyPhoneOtp(phone: string, token: string) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone,
-    token,
-    type: "sms",
-  });
-  if (error) throw error;
-  return data;
-}
-
-
-
-export const AuthContext = createContext<any>(null);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const session = supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  return (
-    <AuthContext.Provider value={{ user, setUser }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
 
 interface AuthState {
-  user: User | null;
+  user: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
 
-type AuthAction = 
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_USER'; payload: User | null }
-  | { type: 'LOGOUT' };
-
-const AuthContext = createContext<{
-  state: AuthState;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>;
-  logout: () => Promise<void>;
-  updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>;
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
-} | undefined>(undefined);
+type AuthAction =
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_USER"; payload: UserProfile | null }
+  | { type: "LOGOUT" };
 
 interface RegisterData {
   name: string;
@@ -85,18 +36,33 @@ interface RegisterData {
   phone?: string;
 }
 
+type AuthContextType = {
+  state: AuthState;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<void>;
+  signInWithPhone: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  updateProfile: (userData: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+};
+
+// -----------------
+// Reducer
+// -----------------
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
-    case 'SET_LOADING':
+    case "SET_LOADING":
       return { ...state, isLoading: action.payload };
-    case 'SET_USER':
-      return { 
-        ...state, 
-        user: action.payload, 
+    case "SET_USER":
+      return {
+        ...state,
+        user: action.payload,
         isAuthenticated: !!action.payload,
-        isLoading: false 
+        isLoading: false,
       };
-    case 'LOGOUT':
+    case "LOGOUT":
       return { user: null, isAuthenticated: false, isLoading: false };
     default:
       return state;
@@ -106,10 +72,18 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 const initialState: AuthState = {
   user: null,
   isLoading: true,
-  isAuthenticated: false
+  isAuthenticated: false,
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// -----------------
+// Context
+// -----------------
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// -----------------
+// Provider
+// -----------------
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
@@ -117,52 +91,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+
         if (session?.user) {
-          // Fetch user profile from our custom users table
           const { data: userProfile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('user_id', session.user.id)
+            .from("users")
+            .select("*")
+            .eq("user_id", session.user.id)
             .single();
-          
+
           if (userProfile) {
-            dispatch({ type: 'SET_USER', payload: userProfile });
+            dispatch({ type: "SET_USER", payload: userProfile });
           }
         }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error("Auth check error:", error);
       } finally {
-        dispatch({ type: 'SET_LOADING', payload: false });
+        dispatch({ type: "SET_LOADING", payload: false });
       }
     };
 
     checkAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
-        
-        if (userProfile) {
-          dispatch({ type: 'SET_USER', payload: userProfile });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session?.user) {
+          const { data: userProfile } = await supabase
+            .from("users")
+            .select("*")
+            .eq("user_id", session.user.id)
+            .single();
+
+          if (userProfile) {
+            dispatch({ type: "SET_USER", payload: userProfile });
+          }
+        } else if (event === "SIGNED_OUT") {
+          dispatch({ type: "LOGOUT" });
         }
-      } else if (event === 'SIGNED_OUT') {
-        dispatch({ type: 'LOGOUT' });
       }
-    });
+    );
 
     return () => subscription.unsubscribe();
   }, []);
 
+  // -----------------
+  // Actions
+  // -----------------
+
   const register = async (userData: RegisterData) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      // Create auth user
+      dispatch({ type: "SET_LOADING", payload: true });
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -171,16 +150,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (authError) throw authError;
 
       if (authData.user) {
-        // Create user profile
-        const { error: profileError } = await supabase
-          .from('users')
-          .insert({
-            user_id: authData.user.id,
-            name: userData.name,
-            email: userData.email,
-            phone: userData.phone,
-            addresses: []
-          });
+        const { error: profileError } = await supabase.from("users").insert({
+          user_id: authData.user.id,
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          addresses: [],
+        });
 
         if (profileError) throw profileError;
       }
@@ -189,50 +165,80 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       return { success: false, error: error.message };
     } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: "SET_LOADING", payload: false });
     }
   };
 
   const login = async (email: string, password: string) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
-      
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      dispatch({ type: "SET_LOADING", payload: true });
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) throw error;
-
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
     } finally {
-      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
+  };
+
+  const loginWithGoogle = async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+    } catch (error) {
+      console.error("Google login error:", error);
+    }
+  };
+
+  const signInWithPhone = async (phone: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone });
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone,
+        token,
+        type: "sms",
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   };
 
   const logout = async () => {
     try {
       await supabase.auth.signOut();
-      dispatch({ type: 'LOGOUT' });
+      dispatch({ type: "LOGOUT" });
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error("Logout error:", error);
     }
   };
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateProfile = async (userData: Partial<UserProfile>) => {
     try {
-      if (!state.user) throw new Error('No user logged in');
+      if (!state.user) throw new Error("No user logged in");
 
       const { error } = await supabase
-        .from('users')
+        .from("users")
         .update(userData)
-        .eq('user_id', state.user.user_id);
+        .eq("user_id", state.user.user_id);
 
       if (error) throw error;
 
-      dispatch({ type: 'SET_USER', payload: { ...state.user, ...userData } });
+      dispatch({ type: "SET_USER", payload: { ...state.user, ...userData } });
       return { success: true };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -250,23 +256,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{
-      state,
-      login,
-      register,
-      logout,
-      updateProfile,
-      resetPassword
-    }}>
+    <AuthContext.Provider
+      value={{
+        state,
+        login,
+        register,
+        loginWithGoogle,
+        signInWithPhone,
+        verifyPhoneOtp,
+        logout,
+        updateProfile,
+        resetPassword,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
+// -----------------
+// Hook
+// -----------------
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
