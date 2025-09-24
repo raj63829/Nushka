@@ -15,7 +15,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  //addresses: Address[];
+  addresses: Address[];
   created_at: string;
 }
 
