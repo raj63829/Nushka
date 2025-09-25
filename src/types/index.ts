@@ -43,4 +43,8 @@ export interface RitualStep {
   title: string;
   description: string;
   products: string[];
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
