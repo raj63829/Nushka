@@ -1,55 +1,82 @@
-import { useState } from "react";
-import { supabase } from "../../lib/supabase";
+"use client"
+
+import { useState } from "react"
+import { useAuth } from "../context/AuthContext"
+import { Mail } from "lucide-react"
 
 export default function Signup() {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState("")
+  const [message, setMessage] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const { sendOTP } = useAuth()
 
-  const handleSendMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage("");
-    setIsLoading(true);
+  const handleSendOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage("")
+    setIsLoading(true)
 
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth-callback`,
-      },
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      setMessage(error.message || "Failed to send magic link");
-      return;
+    try {
+      const result = await sendOTP(email)
+      if (result.success) {
+        setMessage("✅ Check your email for a 6-digit OTP to sign in.")
+      } else {
+        setMessage(result.error || "Failed to send OTP. Try again.")
+      }
+    } catch (err: any) {
+      console.error("Signup error:", err)
+      setMessage("⚠️ An unexpected error occurred. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
-
-    setMessage("Check your email for a magic link to sign in.");
-  };
+  }
 
   return (
-    <div className="p-6 max-w-md mx-auto bg-white shadow rounded">
-      <form onSubmit={handleSendMagicLink} className="space-y-4">
-        <h2 className="text-xl font-bold">Sign in with Email</h2>
-        <input
-          type="email"
-          placeholder="Email"
-          className="border p-2 w-full"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="bg-blue-600 text-white px-4 py-2 rounded w-full disabled:opacity-50"
-        >
-          {isLoading ? "Sending..." : "Send Magic Link"}
-        </button>
-      </form>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="p-8 max-w-md w-full bg-white shadow-lg rounded-lg">
+        <div className="text-center mb-6">
+          <div className="mx-auto w-16 h-16 flex items-center justify-center bg-blue-100 rounded-full mb-3">
+            <Mail className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800">Sign in with Email</h2>
+          <p className="text-gray-600 mt-2 text-sm">
+            Enter your email and we’ll send a 6-digit OTP to log you in.
+          </p>
+        </div>
 
-      {message && <p className="mt-4 text-center">{message}</p>}
+        <form onSubmit={handleSendOTP} className="space-y-4">
+          <input
+            type="email"
+            placeholder="Enter your email"
+            className="border p-3 w-full rounded focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isLoading}
+            required
+          />
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="bg-blue-600 text-white px-4 py-3 rounded w-full font-semibold hover:bg-blue-700 disabled:opacity-50 transition"
+          >
+            {isLoading ? "Sending..." : "Send OTP"}
+          </button>
+        </form>
+
+        {message && (
+          <p
+            className={`mt-4 text-center font-medium ${
+              message.startsWith("✅") ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {message}
+          </p>
+        )}
+
+        <div className="mt-6 text-center text-gray-500 text-xs">
+          By continuing, you agree to our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>.
+        </div>
+      </div>
     </div>
-  );
+  )
 }

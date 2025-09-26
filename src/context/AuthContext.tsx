@@ -3,15 +3,13 @@
 import type React from "react"
 import { createContext, useContext, useReducer, useEffect } from "react"
 import type { User } from "@supabase/supabase-js"
-import { 
-  signInWithOtp, 
-  signOut, 
+import { supabase } from "../lib/supabase"
+import {
   getCurrentSession,
   createUserProfile,
   getUserProfile,
-  updateUserProfile
+  updateUserProfile,
 } from "../lib/auth"
-import { supabase } from "../lib/supabase"
 
 interface AuthState {
   user: User | null
@@ -30,29 +28,32 @@ type AuthAction =
   | { type: "SET_OTP_STEP"; payload: "none" | "email-sent" | "verified" }
   | { type: "SET_PENDING_EMAIL"; payload: string | null }
 
-const AuthContext = createContext<
-  | {
-      state: AuthState
-      loginWithEmailOtp: (email: string) => Promise<{ success: boolean; error?: string }>
-      logout: () => Promise<void>
-      updateProfile: (userData: { name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>
-    }
-  | undefined
->(undefined)
+interface AuthContextProps {
+  state: AuthState
+  loginWithEmailOtp: (email: string) => Promise<{ success: boolean; error?: string }>
+  verifyOTP: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>
+  sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
+  updateProfile: (userData: { name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>
+}
 
-interface RegisterData {}
+const AuthContext = createContext<AuthContextProps | undefined>(undefined)
+
+const initialState: AuthState = {
+  user: null,
+  userProfile: null,
+  isLoading: true,
+  isAuthenticated: false,
+  otpVerificationStep: "none",
+  pendingEmail: null,
+}
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case "SET_LOADING":
       return { ...state, isLoading: action.payload }
     case "SET_USER":
-      return {
-        ...state,
-        user: action.payload,
-        isAuthenticated: !!action.payload,
-        isLoading: false,
-      }
+      return { ...state, user: action.payload, isAuthenticated: !!action.payload, isLoading: false }
     case "SET_USER_PROFILE":
       return { ...state, userProfile: action.payload }
     case "LOGOUT":
@@ -73,44 +74,32 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   }
 }
 
-const initialState: AuthState = {
-  user: null,
-  userProfile: null,
-  isLoading: true,
-  isAuthenticated: false,
-  otpVerificationStep: "none",
-  pendingEmail: null,
-}
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
+  /** Check auth and load session/profile */
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Get current session from Supabase
         const session = await getCurrentSession()
         if (session?.user) {
           dispatch({ type: "SET_USER", payload: session.user })
-          
-          // Try to get user profile from database
           try {
             const profile = await getUserProfile(session.user.id)
             dispatch({ type: "SET_USER_PROFILE", payload: profile })
-          } catch (error) {
-            // If profile doesn't exist, create one
+          } catch {
             if (session.user.email) {
               const profile = await createUserProfile(session.user.id, {
-                name: session.user.user_metadata?.name || session.user.email.split('@')[0],
+                name: session.user.user_metadata?.name || session.user.email.split("@")[0],
                 email: session.user.email,
-                phone: session.user.user_metadata?.phone || ''
+                phone: session.user.user_metadata?.phone || "",
               })
               dispatch({ type: "SET_USER_PROFILE", payload: profile })
             }
           }
         }
-      } catch (error) {
-        console.error("Auth check error:", error)
+      } catch (err) {
+        console.error("Auth check error:", err)
       } finally {
         dispatch({ type: "SET_LOADING", payload: false })
       }
@@ -118,26 +107,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkAuth()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === "SIGNED_IN" && session?.user) {
         dispatch({ type: "SET_USER", payload: session.user })
-        
-        // Get or create user profile
         try {
           const profile = await getUserProfile(session.user.id)
           dispatch({ type: "SET_USER_PROFILE", payload: profile })
-        } catch (error) {
+        } catch {
           if (session.user.email) {
             const profile = await createUserProfile(session.user.id, {
-              name: session.user.user_metadata?.name || session.user.email.split('@')[0],
+              name: session.user.user_metadata?.name || session.user.email.split("@")[0],
               email: session.user.email,
-              phone: session.user.user_metadata?.phone || ''
+              phone: session.user.user_metadata?.phone || "",
             })
             dispatch({ type: "SET_USER_PROFILE", payload: profile })
           }
         }
-      } else if (event === 'SIGNED_OUT') {
+      } else if (event === "SIGNED_OUT") {
         dispatch({ type: "LOGOUT" })
       }
     })
@@ -145,50 +131,88 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe()
   }, [])
 
-  const loginWithEmailOtp = async (email: string) => {
+  /** Send OTP via Netlify proxy */
+  const sendOTP = async (email: string) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true })
-      await signInWithOtp(email)
+      const res = await fetch("/.netlify/functions/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || "Failed to send OTP")
+
       dispatch({ type: "SET_PENDING_EMAIL", payload: email })
       dispatch({ type: "SET_OTP_STEP", payload: "email-sent" })
+
       return { success: true }
-    } catch (error: any) {
-      return { success: false, error: error.message }
+    } catch (err: any) {
+      console.error("sendOTP error:", err)
+      return { success: false, error: err.message }
     } finally {
       dispatch({ type: "SET_LOADING", payload: false })
     }
   }
 
-  const logout = async () => {
+  /** Verify OTP via Netlify proxy */
+  const verifyOTP = async (email: string, otpCode: string) => {
     try {
-      await signOut()
-      dispatch({ type: "LOGOUT" })
-    } catch (error) {
-      console.error("Logout error:", error)
+      dispatch({ type: "SET_LOADING", payload: true })
+      const res = await fetch("/.netlify/functions/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: otpCode }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || "OTP verification failed")
+
+      const session = await getCurrentSession()
+      if (session?.user) dispatch({ type: "SET_USER", payload: session.user })
+
+      dispatch({ type: "SET_OTP_STEP", payload: "verified" })
+
+      return { success: true }
+    } catch (err: any) {
+      console.error("verifyOTP error:", err)
+      return { success: false, error: err.message }
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false })
     }
   }
 
+  /** Login (send OTP) */
+  const loginWithEmailOtp = async (email: string) => sendOTP(email)
+
+  /** Logout */
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut()
+      dispatch({ type: "LOGOUT" })
+    } catch (err) {
+      console.error("Logout error:", err)
+    }
+  }
+
+  /** Update user profile */
   const updateProfile = async (userData: { name?: string; phone?: string }) => {
     try {
       if (!state.user) throw new Error("No user logged in")
-
-      // Update profile in Supabase database
       const updatedProfile = await updateUserProfile(state.user.id, userData)
-      
       dispatch({ type: "SET_USER_PROFILE", payload: updatedProfile })
       return { success: true }
-    } catch (error: any) {
-      return { success: false, error: error.message }
+    } catch (err: any) {
+      return { success: false, error: err.message }
     }
   }
-
-  // OTP verification is handled by magic link redirect; no manual verify here
 
   return (
     <AuthContext.Provider
       value={{
         state,
         loginWithEmailOtp,
+        sendOTP,
+        verifyOTP,
         logout,
         updateProfile,
       }}
@@ -200,8 +224,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider")
   return context
 }
