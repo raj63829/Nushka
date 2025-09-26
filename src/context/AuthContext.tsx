@@ -2,10 +2,24 @@
 
 import type React from "react"
 import { createContext, useContext, useReducer, useEffect } from "react"
-import type { User } from "../lib/supabase"
+import type { User } from "@supabase/supabase-js"
+import { 
+  signInWithEmail, 
+  signUpWithEmail, 
+  signInWithGoogle, 
+  signInWithOtp, 
+  signOut, 
+  getCurrentUser, 
+  getCurrentSession,
+  createUserProfile,
+  getUserProfile,
+  updateUserProfile
+} from "../lib/auth"
+import { supabase } from "../lib/supabase"
 
 interface AuthState {
   user: User | null
+  userProfile: any | null
   isLoading: boolean
   isAuthenticated: boolean
   otpVerificationStep: "none" | "email-sent" | "verified"
@@ -15,6 +29,7 @@ interface AuthState {
 type AuthAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_USER"; payload: User | null }
+  | { type: "SET_USER_PROFILE"; payload: any | null }
   | { type: "LOGOUT" }
   | { type: "SET_OTP_STEP"; payload: "none" | "email-sent" | "verified" }
   | { type: "SET_PENDING_EMAIL"; payload: string | null }
@@ -24,8 +39,9 @@ const AuthContext = createContext<
       state: AuthState
       login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
       register: (userData: RegisterData) => Promise<{ success: boolean; error?: string }>
+      loginWithGoogle: () => Promise<{ success: boolean; error?: string }>
       logout: () => Promise<void>
-      updateProfile: (userData: Partial<User>) => Promise<{ success: boolean; error?: string }>
+      updateProfile: (userData: { name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>
       resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>
       sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>
       verifyOTP: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>
@@ -52,9 +68,12 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isAuthenticated: !!action.payload,
         isLoading: false,
       }
+    case "SET_USER_PROFILE":
+      return { ...state, userProfile: action.payload }
     case "LOGOUT":
       return {
         user: null,
+        userProfile: null,
         isAuthenticated: false,
         isLoading: false,
         otpVerificationStep: "none",
@@ -71,6 +90,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const initialState: AuthState = {
   user: null,
+  userProfile: null,
   isLoading: true,
   isAuthenticated: false,
   otpVerificationStep: "none",
@@ -83,11 +103,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if there's a logged-in user in localStorage
-        const currentUser = localStorage.getItem("current-user")
-        if (currentUser) {
-          const user = JSON.parse(currentUser)
-          dispatch({ type: "SET_USER", payload: user })
+        // Get current session from Supabase
+        const session = await getCurrentSession()
+        if (session?.user) {
+          dispatch({ type: "SET_USER", payload: session.user })
+          
+          // Try to get user profile from database
+          try {
+            const profile = await getUserProfile(session.user.id)
+            dispatch({ type: "SET_USER_PROFILE", payload: profile })
+          } catch (error) {
+            // If profile doesn't exist, create one
+            if (session.user.email) {
+              const profile = await createUserProfile(session.user.id, {
+                name: session.user.user_metadata?.name || session.user.email.split('@')[0],
+                email: session.user.email,
+                phone: session.user.user_metadata?.phone || ''
+              })
+              dispatch({ type: "SET_USER_PROFILE", payload: profile })
+            }
+          }
         }
       } catch (error) {
         console.error("Auth check error:", error)
@@ -97,38 +132,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     checkAuth()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        dispatch({ type: "SET_USER", payload: session.user })
+        
+        // Get or create user profile
+        try {
+          const profile = await getUserProfile(session.user.id)
+          dispatch({ type: "SET_USER_PROFILE", payload: profile })
+        } catch (error) {
+          if (session.user.email) {
+            const profile = await createUserProfile(session.user.id, {
+              name: session.user.user_metadata?.name || session.user.email.split('@')[0],
+              email: session.user.email,
+              phone: session.user.user_metadata?.phone || ''
+            })
+            dispatch({ type: "SET_USER_PROFILE", payload: profile })
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        dispatch({ type: "LOGOUT" })
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const register = async (userData: RegisterData) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true })
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Check if user already exists
-      const existingProfiles = JSON.parse(localStorage.getItem("user-profiles") || "[]")
-      const existingUser = existingProfiles.find((u: any) => u.email === userData.email)
-
-      if (existingUser) {
-        throw new Error("User already exists with this email")
-      }
-
-      // Create new user profile
-      const newUser = {
-        user_id: `user_${Date.now()}`,
+      // Sign up with Supabase
+      const { user } = await signUpWithEmail(userData.email, userData.password, {
         name: userData.name,
-        email: userData.email,
-        phone: userData.phone || "",
-        addresses: [],
-        created_at: new Date().toISOString(),
+        phone: userData.phone
+      })
+
+      if (user) {
+        // Create user profile in database
+        const profile = await createUserProfile(user.id, {
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone
+        })
+
+        dispatch({ type: "SET_USER", payload: user })
+        dispatch({ type: "SET_USER_PROFILE", payload: profile })
       }
-
-      existingProfiles.push(newUser)
-      localStorage.setItem("user-profiles", JSON.stringify(existingProfiles))
-
-      // Set user as logged in
-      dispatch({ type: "SET_USER", payload: newUser })
 
       return { success: true }
     } catch (error: any) {
@@ -142,20 +194,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: "SET_LOADING", payload: true })
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Sign in with Supabase
+      const { user } = await signInWithEmail(email, password)
 
-      // Find user in localStorage
-      const existingProfiles = JSON.parse(localStorage.getItem("user-profiles") || "[]")
-      const user = existingProfiles.find((u: any) => u.email === email)
-
-      if (!user) {
-        throw new Error("No account found with this email")
+      if (user) {
+        // Get user profile from database
+        const profile = await getUserProfile(user.id)
+        
+        dispatch({ type: "SET_USER", payload: user })
+        dispatch({ type: "SET_USER_PROFILE", payload: profile })
       }
 
-      // For demo purposes, accept any password
-      // In real implementation, you'd verify the password hash
-      dispatch({ type: "SET_USER", payload: user })
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false })
+    }
+  }
+
+  const loginWithGoogle = async () => {
+    try {
+      dispatch({ type: "SET_LOADING", payload: true })
+
+      // Sign in with Google OAuth
+      await signInWithGoogle()
 
       return { success: true }
     } catch (error: any) {
@@ -167,25 +230,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      await signOut()
       dispatch({ type: "LOGOUT" })
     } catch (error) {
       console.error("Logout error:", error)
     }
   }
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateProfile = async (userData: { name?: string; phone?: string }) => {
     try {
       if (!state.user) throw new Error("No user logged in")
 
-      const existingProfiles = JSON.parse(localStorage.getItem("user-profiles") || "[]")
-      const userIndex = existingProfiles.findIndex((u: any) => u.user_id === state.user?.user_id)
-
-      if (userIndex === -1) throw new Error("User profile not found")
-
-      existingProfiles[userIndex] = { ...existingProfiles[userIndex], ...userData }
-      localStorage.setItem("user-profiles", JSON.stringify(existingProfiles))
-
-      dispatch({ type: "SET_USER", payload: { ...state.user, ...userData } })
+      // Update profile in Supabase database
+      const updatedProfile = await updateUserProfile(state.user.id, userData)
+      
+      dispatch({ type: "SET_USER_PROFILE", payload: updatedProfile })
       return { success: true }
     } catch (error: any) {
       return { success: false, error: error.message }
@@ -194,17 +253,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Use Supabase password reset
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      })
 
-      const existingProfiles = JSON.parse(localStorage.getItem("user-profiles") || "[]")
-      const user = existingProfiles.find((u: any) => u.email === email)
-
-      if (!user) {
-        throw new Error("No account found with this email")
-      }
-
-      // In real implementation, this would send a password reset email
-      console.log(`[DEMO] Password reset email sent to ${email}`)
+      if (error) throw error
 
       return { success: true }
     } catch (error: any) {
@@ -216,21 +270,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: "SET_LOADING", payload: true })
 
-      // Mock OTP sending - in real implementation, this would call Supabase
-      // await supabase.auth.signInWithOtp({ email });
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Send OTP using Supabase
+      await signInWithOtp(email)
 
       // Store the email for verification
       dispatch({ type: "SET_PENDING_EMAIL", payload: email })
       dispatch({ type: "SET_OTP_STEP", payload: "email-sent" })
-
-      // For demo purposes, show the OTP in console
-      const mockOTP = Math.floor(100000 + Math.random() * 900000).toString()
-      console.log(`[DEMO] OTP for ${email}: ${mockOTP}`)
-      localStorage.setItem("demo-otp", mockOTP)
-      localStorage.setItem("demo-otp-email", email)
 
       return { success: true }
     } catch (error: any) {
@@ -244,38 +289,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       dispatch({ type: "SET_LOADING", payload: true })
 
-      // Mock OTP verification
-      const storedOTP = localStorage.getItem("demo-otp")
-      const storedEmail = localStorage.getItem("demo-otp-email")
+      // Verify OTP with Supabase
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email'
+      })
 
-      if (storedOTP !== otp || storedEmail !== email) {
-        throw new Error("Invalid OTP")
-      }
+      if (error) throw error
 
-      // Create or get user profile
-      let userProfile = JSON.parse(localStorage.getItem("user-profiles") || "[]").find((u: any) => u.email === email)
-
-      if (!userProfile) {
-        userProfile = {
-          user_id: `user_${Date.now()}`,
-          email,
-          name: email.split("@")[0],
-          phone: "",
-          addresses: [],
-          created_at: new Date().toISOString(),
+      if (data.user) {
+        // Get or create user profile
+        try {
+          const profile = await getUserProfile(data.user.id)
+          dispatch({ type: "SET_USER_PROFILE", payload: profile })
+        } catch (error) {
+          if (data.user.email) {
+            const profile = await createUserProfile(data.user.id, {
+              name: data.user.user_metadata?.name || data.user.email.split('@')[0],
+              email: data.user.email,
+              phone: data.user.user_metadata?.phone || ''
+            })
+            dispatch({ type: "SET_USER_PROFILE", payload: profile })
+          }
         }
 
-        const profiles = JSON.parse(localStorage.getItem("user-profiles") || "[]")
-        profiles.push(userProfile)
-        localStorage.setItem("user-profiles", JSON.stringify(profiles))
+        dispatch({ type: "SET_USER", payload: data.user })
+        dispatch({ type: "SET_OTP_STEP", payload: "verified" })
       }
-
-      dispatch({ type: "SET_USER", payload: userProfile })
-      dispatch({ type: "SET_OTP_STEP", payload: "verified" })
-
-      // Clean up OTP data
-      localStorage.removeItem("demo-otp")
-      localStorage.removeItem("demo-otp-email")
 
       return { success: true }
     } catch (error: any) {
@@ -295,6 +336,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         state,
         login,
         register,
+        loginWithGoogle,
         logout,
         updateProfile,
         resetPassword,

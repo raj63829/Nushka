@@ -20,6 +20,7 @@ import ManageOrders from "./components/pages/ManageOrders"
 import Footer from "./components/Footer"
 import AuthForm from "./components/AuthForm"
 import Signup from "./components/pages/Signup"
+import AuthCallback from "./components/pages/AuthCallback"
 import type { Product } from "./types"
 
 function App() {
@@ -73,6 +74,8 @@ function App() {
             <Signup />
           </div>
         )
+      case "auth-callback":
+        return <AuthCallback />
       case "rituals":
         return (
           <div className="min-h-screen bg-gray-50 py-16">

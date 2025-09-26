@@ -15,9 +15,9 @@ const Dashboard: React.FC = () => {
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
 
   const [profileForm, setProfileForm] = useState({
-    name: authState.user?.name || '',
+    name: authState.userProfile?.name || authState.user?.user_metadata?.name || '',
     email: authState.user?.email || '',
-    phone: authState.user?.phone || ''
+    phone: authState.userProfile?.phone || authState.user?.user_metadata?.phone || ''
   });
 
   const [addressForm, setAddressForm] = useState({
@@ -38,14 +38,24 @@ const Dashboard: React.FC = () => {
     }
   }, [authState.user]);
 
+  useEffect(() => {
+    if (authState.userProfile) {
+      setProfileForm({
+        name: authState.userProfile.name || '',
+        email: authState.user?.email || '',
+        phone: authState.userProfile.phone || ''
+      });
+    }
+  }, [authState.userProfile, authState.user]);
+
   const loadAddresses = async () => {
     if (!authState.user) return;
     
     try {
       const { data } = await supabase
-        .from('addresses')
+        .from('user_addresses')
         .select('*')
-        .eq('user_id', authState.user.user_id)
+        .eq('user_id', authState.user.id)
         .order('is_default', { ascending: false });
       
       if (data) setAddresses(data);
@@ -67,7 +77,7 @@ const Dashboard: React.FC = () => {
             products (name, images)
           )
         `)
-        .eq('user_id', authState.user.user_id)
+        .eq('user_id', authState.user.id)
         .order('created_at', { ascending: false });
       
       if (data) setOrders(data as Order[]);
@@ -92,16 +102,16 @@ const Dashboard: React.FC = () => {
       if (editingAddress) {
         // Update existing address
         await supabase
-          .from('addresses')
+          .from('user_addresses')
           .update(addressForm)
           .eq('id', editingAddress.id);
       } else {
         // Add new address
         await supabase
-          .from('addresses')
+          .from('user_addresses')
           .insert({
             ...addressForm,
-            user_id: authState.user.user_id
+            user_id: authState.user.id
           });
       }
       
@@ -126,7 +136,7 @@ const Dashboard: React.FC = () => {
   const deleteAddress = async (addressId: string) => {
     try {
       await supabase
-        .from('addresses')
+        .from('user_addresses')
         .delete()
         .eq('id', addressId);
       
@@ -249,7 +259,7 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-sage-700 mb-1">Name</label>
-                        <p className="text-sage-800">{authState.user?.name}</p>
+                        <p className="text-sage-800">{authState.userProfile?.name || authState.user?.user_metadata?.name || 'Not provided'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-sage-700 mb-1">Email</label>
@@ -257,7 +267,7 @@ const Dashboard: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-sage-700 mb-1">Phone</label>
-                        <p className="text-sage-800">{authState.user?.phone || 'Not provided'}</p>
+                        <p className="text-sage-800">{authState.userProfile?.phone || authState.user?.user_metadata?.phone || 'Not provided'}</p>
                       </div>
                     </div>
                   )}
