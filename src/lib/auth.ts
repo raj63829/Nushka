@@ -6,7 +6,7 @@ export async function signUpWithEmail(email: string, password: string, userData?
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${window.location.origin}/auth-callback`,
       data: userData
     },
   });
@@ -26,7 +26,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: `${window.location.origin}/auth-callback`,
     },
   });
   if (error) throw error;
@@ -38,7 +38,7 @@ export async function signInWithOtp(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.origin}/auth/callback`,
+      emailRedirectTo: `${window.location.origin}/auth-callback`,
     },
   });
   if (error) throw error;
