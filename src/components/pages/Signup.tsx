@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "../context/AuthContext"
 import { Mail } from "lucide-react"
+import { useAuth } from "../../context/AuthContext"
+
 
 export default function Signup() {
   const [email, setEmail] = useState("")
