@@ -311,8 +311,4 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 's
   );
 };
 
-<<<<<<< HEAD
 export default AuthModal;
-=======
-export default AuthModal;
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671

@@ -196,8 +196,4 @@ const Cart: React.FC<CartProps> = ({ onBack, onPageChange }) => {
   );
 };
 
-<<<<<<< HEAD
 export default Cart;
-=======
-export default Cart;
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671

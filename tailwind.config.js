@@ -1,22 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-<<<<<<< HEAD
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',
-    './app/**/*.{js,ts,jsx,tsx,mdx}', // 👈 added for Next.js app dir
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './app/**/*.{js,ts,jsx,tsx,mdx}',
+    '*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {
       colors: {
-        // your custom palette
-=======
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {
-      colors: {
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
         sage: {
           50: '#F7F9F7',
           100: '#E8F2E8',
@@ -41,23 +33,13 @@ export default {
           400: '#F5D033',
           500: '#D4AF37',
           600: '#B8941F',
-<<<<<<< HEAD
         },
-
-        // shadcn/ui system colors (fixes border-border error)
+        // 👇 Add these for Geist / shadcn UI compatibility
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
-      },
-      borderRadius: {
-        lg: 'var(--radius)',
-        md: 'calc(var(--radius) - 2px)',
-        sm: 'calc(var(--radius) - 4px)',
-=======
-        }
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
@@ -65,8 +47,4 @@ export default {
     },
   },
   plugins: [],
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671

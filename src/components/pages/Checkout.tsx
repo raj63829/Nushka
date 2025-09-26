@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client"
 
 import type React from "react"
@@ -34,44 +33,10 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
   })
 
   const { subtotal, shipping, total } = getCartSummary()
-=======
-import React, { useState } from 'react';
-import { ArrowLeft, CreditCard, Wallet, DollarSign, MapPin, Phone, Mail, User, Shield } from 'lucide-react';
-import { useCart } from '../../context/CartContext';
-import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
-
-interface CheckoutProps {
-  onBack: () => void;
-  onPageChange: (page: string) => void;
-}
-
-const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
-  const { state, clearCart } = useCart();
-  const { state: authState } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState('card');
-  const [orderPlaced, setOrderPlaced] = useState(false);
-
-  const [formData, setFormData] = useState({
-    email: '',
-    firstName: '',
-    lastName: '',
-    address: '',
-    city: '',
-    state: '',
-    pincode: '',
-    phone: ''
-  });
-
-  const shippingCost = state.total >= 1999 ? 0 : 99;
-  const finalTotal = state.total + shippingCost;
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
-<<<<<<< HEAD
       [e.target.name]: e.target.value,
     })
   }
@@ -124,51 +89,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
     console.error("Payment error:", error)
     // Handle payment error - show error message to user
   }
-=======
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handlePlaceOrder = async () => {
-    try {
-      // Create order in database
-      const orderData = {
-        user_id: authState.user?.user_id || null,
-        total_amount: finalTotal,
-        payment_status: paymentMethod === 'cod' ? 'pending' : 'completed',
-        order_status: 'processing',
-        payment_method: paymentMethod,
-        shipping_address: formData,
-        items: state.items.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          price: item.price,
-          product_name: item.name
-        }))
-      };
-
-      const { data: order, error } = await supabase
-        .from('orders')
-        .insert(orderData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // If payment method is not COD, integrate with payment gateway
-      if (paymentMethod !== 'cod') {
-        // Integration with Razorpay/Stripe would go here
-        console.log('Processing payment for order:', order.order_id);
-      }
-
-      setOrderPlaced(true);
-      clearCart();
-    } catch (error) {
-      console.error('Error placing order:', error);
-      // Handle error - show error message to user
-    }
-  };
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
 
   if (orderPlaced) {
     return (
@@ -178,28 +98,16 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
             <Shield className="h-8 w-8 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-sage-800 mb-4">Order Confirmed!</h2>
-<<<<<<< HEAD
           <p className="text-sage-600 mb-6">Thank you for your order. You will receive a confirmation email shortly.</p>
           <p className="text-sm text-sage-500 mb-6">Order ID: #{orderNumber}</p>
           <button
             onClick={() => onPageChange("home")}
-=======
-          <p className="text-sage-600 mb-6">
-            Thank you for your order. You will receive a confirmation email shortly.
-          </p>
-          <p className="text-sm text-sage-500 mb-6">
-            Order ID: #NUSHKA{Date.now()}
-          </p>
-          <button
-            onClick={() => onPageChange('home')}
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
             className="bg-sage-600 text-white px-6 py-2 rounded-md hover:bg-sage-700 transition-colors"
           >
             Continue Shopping
           </button>
         </div>
       </div>
-<<<<<<< HEAD
     )
   }
 
@@ -214,22 +122,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
     { id: 2, title: "Payment Method" },
     { id: 3, title: "Order Review" },
   ]
-=======
-    );
-  }
-
-  const paymentMethods = [
-    { id: 'card', label: 'Credit/Debit Card', icon: CreditCard },
-    { id: 'upi', label: 'UPI', icon: Wallet },
-    { id: 'cod', label: 'Cash on Delivery', icon: DollarSign }
-  ];
-
-  const steps = [
-    { id: 1, title: 'Shipping Information' },
-    { id: 2, title: 'Payment Method' },
-    { id: 3, title: 'Order Review' }
-  ];
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -248,28 +140,16 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
         <div className="flex items-center justify-center mb-8">
           {steps.map((step, index) => (
             <div key={step.id} className="flex items-center">
-<<<<<<< HEAD
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
                   currentStep >= step.id ? "bg-sage-600 text-white" : "bg-sage-200 text-sage-600"
                 }`}
               >
-=======
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium ${
-                currentStep >= step.id ? 'bg-sage-600 text-white' : 'bg-sage-200 text-sage-600'
-              }`}>
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 {step.id}
               </div>
               <span className="ml-2 text-sm text-sage-600">{step.title}</span>
               {index < steps.length - 1 && (
-<<<<<<< HEAD
                 <div className={`w-16 h-0.5 mx-4 ${currentStep > step.id ? "bg-sage-600" : "bg-sage-200"}`} />
-=======
-                <div className={`w-16 h-0.5 mx-4 ${
-                  currentStep > step.id ? 'bg-sage-600' : 'bg-sage-200'
-                }`} />
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
               )}
             </div>
           ))}
@@ -281,33 +161,21 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
             {currentStep === 1 && (
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold text-sage-800 mb-6">Shipping Information</h2>
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 {!authState.isAuthenticated && (
                   <div className="bg-sage-50 p-4 rounded-md mb-6">
                     <p className="text-sage-700 mb-3">
                       Have an account? Sign in for faster checkout with saved addresses.
                     </p>
                     <button
-<<<<<<< HEAD
                       onClick={() => onPageChange("home")} // This would trigger auth modal
-=======
-                      onClick={() => onPageChange('home')} // This would trigger auth modal
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                       className="text-sage-600 hover:text-sage-800 font-medium underline"
                     >
                       Sign In to Your Account
                     </button>
                   </div>
                 )}
-<<<<<<< HEAD
 
-=======
-                
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-sage-700 mb-2">
@@ -427,7 +295,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
 
             {currentStep === 2 && (
               <div className="bg-white p-6 rounded-lg shadow-sm">
-<<<<<<< HEAD
                 <h2 className="text-xl font-semibold text-sage-800 mb-6">Payment</h2>
 
                 <PaymentGateway
@@ -441,25 +308,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
                   }}
                 />
 
-=======
-                <h2 className="text-xl font-semibold text-sage-800 mb-6">Payment Method</h2>
-                <div className="space-y-4">
-                  {paymentMethods.map((method) => (
-                    <label key={method.id} className="flex items-center p-4 border border-sage-200 rounded-md cursor-pointer hover:border-sage-400 transition-colors">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value={method.id}
-                        checked={paymentMethod === method.id}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="mr-4 text-sage-600 focus:ring-sage-500"
-                      />
-                      <method.icon className="h-5 w-5 text-sage-600 mr-3" />
-                      <span className="font-medium text-sage-800">{method.label}</span>
-                    </label>
-                  ))}
-                </div>
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 <div className="flex space-x-4 mt-6">
                   <button
                     onClick={() => setCurrentStep(1)}
@@ -467,52 +315,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
                   >
                     Back
                   </button>
-<<<<<<< HEAD
-=======
-                  <button
-                    onClick={() => setCurrentStep(3)}
-                    className="flex-1 bg-sage-600 text-white py-3 rounded-md hover:bg-sage-700 transition-colors"
-                  >
-                    Review Order
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {currentStep === 3 && (
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold text-sage-800 mb-6">Review Your Order</h2>
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <h3 className="font-medium text-sage-800 mb-2">Shipping Address</h3>
-                    <p className="text-sage-600 text-sm">
-                      {formData.firstName} {formData.lastName}<br />
-                      {formData.address}<br />
-                      {formData.city}, {formData.state} {formData.pincode}<br />
-                      {formData.phone}
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium text-sage-800 mb-2">Payment Method</h3>
-                    <p className="text-sage-600 text-sm">
-                      {paymentMethods.find(m => m.id === paymentMethod)?.label}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => setCurrentStep(2)}
-                    className="flex-1 border border-sage-300 text-sage-600 py-3 rounded-md hover:bg-sage-50 transition-colors"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={handlePlaceOrder}
-                    className="flex-1 bg-sage-600 text-white py-3 rounded-md hover:bg-sage-700 transition-colors"
-                  >
-                    Place Order
-                  </button>
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 </div>
               </div>
             )}
@@ -522,7 +324,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-lg shadow-sm sticky top-4">
               <h2 className="text-xl font-semibold text-sage-800 mb-4">Order Summary</h2>
-<<<<<<< HEAD
 
               <div className="space-y-4 mb-6">
                 {state.items.map((item) => (
@@ -532,18 +333,10 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
                       alt={item.name}
                       className="w-12 h-12 object-cover rounded"
                     />
-=======
-              
-              <div className="space-y-4 mb-6">
-                {state.items.map((item) => (
-                  <div key={item.id} className="flex items-center space-x-3">
-                    <img src={item.images[0]} alt={item.name} className="w-12 h-12 object-cover rounded" />
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                     <div className="flex-1">
                       <p className="font-medium text-sage-800 text-sm">{item.name}</p>
                       <p className="text-sage-600 text-sm">Qty: {item.quantity}</p>
                     </div>
-<<<<<<< HEAD
                     <span className="text-sage-800 font-medium">₹{(item.price * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
@@ -561,27 +354,6 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
                 <div className="flex justify-between text-lg font-semibold pt-2 border-t border-sage-200">
                   <span className="text-sage-800">Total</span>
                   <span className="text-sage-800">₹{total.toLocaleString()}</span>
-=======
-                    <span className="text-sage-800 font-medium">
-                      ₹{(item.price * item.quantity).toLocaleString()}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="border-t border-sage-200 pt-4 space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sage-600">Subtotal</span>
-                  <span className="text-sage-800">₹{state.total.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sage-600">Shipping</span>
-                  <span className="text-sage-800">{shippingCost === 0 ? 'Free' : `₹${shippingCost}`}</span>
-                </div>
-                <div className="flex justify-between text-lg font-semibold pt-2 border-t border-sage-200">
-                  <span className="text-sage-800">Total</span>
-                  <span className="text-sage-800">₹{finalTotal.toLocaleString()}</span>
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
                 </div>
               </div>
             </div>
@@ -589,14 +361,7 @@ const Checkout: React.FC<CheckoutProps> = ({ onBack, onPageChange }) => {
         </div>
       </div>
     </div>
-<<<<<<< HEAD
   )
 }
 
 export default Checkout
-=======
-  );
-};
-
-export default Checkout;
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671

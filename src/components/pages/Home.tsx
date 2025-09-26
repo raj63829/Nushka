@@ -171,8 +171,4 @@ const Home: React.FC<HomeProps> = ({ onPageChange, onProductClick }) => {
   );
 };
 
-<<<<<<< HEAD
 export default Home;
-=======
-export default Home;
->>>>>>> 03c7a7604bb214e4d0f1d3102e34f6504e4c0671
