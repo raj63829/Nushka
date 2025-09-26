@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
-export default function AuthCallback() {
+interface AuthCallbackProps {
+  onPageChange: (page: string) => void
+}
+
+export default function AuthCallback({ onPageChange }: AuthCallbackProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const navigate = useNavigate()
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -21,10 +23,10 @@ export default function AuthCallback() {
 
         if (data.session) {
           // User is authenticated, redirect to home
-          navigate('/')
+          onPageChange('home')
         } else {
           // No session found, redirect to login
-          navigate('/login')
+          onPageChange('auth')
         }
       } catch (err) {
         console.error('Unexpected error:', err)
@@ -35,7 +37,7 @@ export default function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [navigate])
+  }, [onPageChange])
 
   if (loading) {
     return (
@@ -60,7 +62,7 @@ export default function AuthCallback() {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => onPageChange('auth')}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Back to Login

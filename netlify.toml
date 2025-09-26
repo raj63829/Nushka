@@ -1,14 +1,10 @@
 [build]
   command = "npm run build"
-  publish = ".next"
+  publish = "dist"
   functions = ".netlify/functions/"
 
 [build.environment]
   NODE_VERSION = "18"
-
-# Use the official Next.js plugin (handles SSR + static exports)
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 # Proxy API requests securely
 [[redirects]]
@@ -28,6 +24,6 @@
 
 # Cache headers for static files
 [[headers]]
-  for = "/_next/static/*"
+  for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"

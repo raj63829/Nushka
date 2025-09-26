@@ -75,7 +75,7 @@ function App() {
           </div>
         )
       case "auth-callback":
-        return <AuthCallback />
+        return <AuthCallback onPageChange={handlePageChange} />
       case "rituals":
         return (
           <div className="min-h-screen bg-gray-50 py-16">
