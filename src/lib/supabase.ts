@@ -1,17 +1,21 @@
+// lib/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js"
 
+// Load Supabase URL and anon key from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co"
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
 
-// Create client with fallback values to prevent runtime errors
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Helper function to check if Supabase is properly configured
-export const isSupabaseConfigured = () => {
+// Helper to check if Supabase is properly configured
+export const isSupabaseConfigured = (): boolean => {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
 }
 
+// -------------------------
 // Database Types
+// -------------------------
 export interface User {
   user_id: string
   name: string
@@ -70,4 +74,16 @@ export interface WishlistItem {
   user_id: string
   product_id: string
   created_at: string
+}
+
+// -------------------------
+// Example default user
+// -------------------------
+export const defaultUser: User = {
+  user_id: "1",
+  name: "Raj Sharma",
+  email: "rajsharma63829@gmail.com",
+  phone: "9618113710",
+  addresses: [],
+  created_at: new Date().toISOString(),
 }
