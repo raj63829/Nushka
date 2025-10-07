@@ -1,36 +1,42 @@
 // netlify/functions/proxy-api.js
-import fetch from "node-fetch"; // only needed for Node <18, optional in Netlify Node18 runtime
-
 export async function handler(event, context) {
-  try {
-    // Backend URL (HTTP-only)
-    const backendUrl = "http://casper-ai-573fqmg7wa-uc.a.run.app/settings/";
+  const backendUrl = "http://casper-ai-573fqmg7wa-uc.a.run.app/settings/";
 
-    // Forward the request method, headers, and body
+  try {
     const response = await fetch(backendUrl, {
       method: event.httpMethod,
       headers: {
         "Content-Type": "application/json",
-        // You can forward other headers if needed
       },
       body: event.httpMethod !== "GET" ? event.body : undefined,
     });
 
-    // Read response text or JSON
-    const data = await response.text(); // use .json() if backend always returns JSON
+    // Try to parse backend response safely
+    const text = await response.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text }; // fallback if backend doesn’t return JSON
+    }
 
     return {
       statusCode: response.status,
-      body: data,
+      body: JSON.stringify(data),
       headers: {
-        "Content-Type": "application/json", // ensures browser treats it as JSON
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Content-Type": "application/json",
       },
     };
   } catch (error) {
     console.error("Proxy API error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Proxy API failed", details: error.message }),
+      body: JSON.stringify({
+        error: "Proxy failed",
+        details: error.message,
+      }),
       headers: { "Content-Type": "application/json" },
     };
   }

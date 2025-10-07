@@ -1,23 +1,31 @@
-import type { Handler } from "@netlify/functions"
-import fetch from "node-fetch"
+// functions/send-otp.js
+import { createClient } from "@supabase/supabase-js"
 
-export const handler: Handler = async (event) => {
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // use service role key on server-side only
+)
+
+export async function handler(event, context) {
   try {
     const { email } = JSON.parse(event.body || "{}")
-    if (!email) return { statusCode: 400, body: JSON.stringify({ error: "Email required" }) }
 
-    // Call your actual backend HTTP endpoint
-    const response = await fetch("http://casper-ai-573fqmg7wa-uc.a.run.app/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
+    if (!email) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Email is required" }) }
+    }
+
+    // Create or trigger OTP login
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true
     })
 
-    const data = await response.json()
-    if (!response.ok) throw new Error(data?.error || "Failed to send OTP")
+    if (error) {
+      return { statusCode: 400, body: JSON.stringify({ error: error.message }) }
+    }
 
     return { statusCode: 200, body: JSON.stringify({ success: true, data }) }
-  } catch (error: any) {
-    return { statusCode: 500, body: JSON.stringify({ success: false, error: error.message }) }
+  } catch (err) {
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) }
   }
 }
