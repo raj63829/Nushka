@@ -1,7 +1,9 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-
-export default defineConfig({
-  plugins: [react()],
-  base: "/", // 👈 required for Netlify
-})
+server: {
+  proxy: {
+    '/api': {
+      target: 'http://casper-ai-573fqmg7wa-uc.a.run.app',
+      changeOrigin: true,
+      rewrite: path => path.replace(/^\/api/, ''),
+    },
+  },
+}

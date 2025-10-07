@@ -1,6 +1,6 @@
 // netlify/functions/proxy-api.js
 export async function handler(event, context) {
-  const backendUrl = "http://casper-ai-573fqmg7wa-uc.a.run.app/settings/";
+  const backendUrl = "https://casper-ai-573fqmg7wa-uc.a.run.app/settings/";
 
   try {
     const response = await fetch(backendUrl, {
