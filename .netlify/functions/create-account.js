@@ -10,13 +10,21 @@ const supabase = createClient(
 exports.handler = async (event) => {
   try {
     if (event.httpMethod !== 'POST') {
-      return { statusCode: 405, body: 'Method Not Allowed' };
+      return {
+        statusCode: 405,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Method Not Allowed' }),
+      };
     }
 
     const { firstName, lastName, email, password } = JSON.parse(event.body || '{}');
 
     if (!firstName || !lastName || !email || !password) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'All fields are required.' }) };
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'All fields are required.' }),
+      };
     }
 
     const { data, error } = await supabase.auth.admin.createUser({
@@ -27,15 +35,27 @@ exports.handler = async (event) => {
     });
 
     if (error) {
-      return { statusCode: 400, body: JSON.stringify({ error: error.message }) };
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: error.message }),
+      };
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Account created successfully', user: data.user }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: 'Account created successfully',
+        user: data.user,
+      }),
     };
   } catch (err) {
     console.error('Create Account Error:', err);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server error' }) };
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Server error' }),
+    };
   }
 };
