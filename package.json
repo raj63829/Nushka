@@ -84,6 +84,7 @@
     "tsx": "latest",
     "typescript-eslint": "latest",
     "vaul": "^0.9.9",
+    "ws": "^8.18.3",
     "yaml": "latest",
     "zod": "^3.25.76"
   },
