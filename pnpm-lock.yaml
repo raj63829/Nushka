@@ -101,6 +101,9 @@ importers:
       '@supabase/functions-js':
         specifier: ^2.74.0
         version: 2.74.0
+      '@supabase/postgrest-js':
+        specifier: ^2.75.0
+        version: 2.75.0
       '@supabase/realtime-js':
         specifier: ^2.75.0
         version: 2.75.0
@@ -1658,6 +1661,9 @@ packages:
 
   '@supabase/postgrest-js@2.74.0':
     resolution: {integrity: sha512-9Ypa2eS0Ib/YQClE+BhDSjx7OKjYEF6LAGjTB8X4HucdboGEwR0LZKctNfw6V0PPIAVjjzZxIlNBXGv0ypIkHw==}
+
+  '@supabase/postgrest-js@2.75.0':
+    resolution: {integrity: sha512-YfBz4W/z7eYCFyuvHhfjOTTzRrQIvsMG2bVwJAKEVVUqGdzqfvyidXssLBG0Fqlql1zJFgtsPpK1n4meHrI7tg==}
 
   '@supabase/realtime-js@2.74.0':
     resolution: {integrity: sha512-K5VqpA4/7RO1u1nyD5ICFKzWKu58bIDcPxHY0aFA7MyWkFd0pzi/XYXeoSsAifnD9p72gPIpgxVXCQZKJg1ktQ==}
@@ -4596,6 +4602,10 @@ snapshots:
       whatwg-url: 5.0.0
 
   '@supabase/postgrest-js@2.74.0':
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+
+  '@supabase/postgrest-js@2.75.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
