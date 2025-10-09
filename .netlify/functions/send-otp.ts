@@ -1,31 +1,26 @@
-// functions/send-otp.js
-import { createClient } from "@supabase/supabase-js"
+const { createClient } = require("@supabase/supabase-js");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY // use service role key on server-side only
-)
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-export async function handler(event, context) {
+exports.handler = async (event) => {
   try {
-    const { email } = JSON.parse(event.body || "{}")
+    const { email } = JSON.parse(event.body || "{}");
 
-    if (!email) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Email is required" }) }
-    }
+    if (!email) return { statusCode: 400, body: JSON.stringify({ error: "Email is required" }) };
 
-    // Create or trigger OTP login
-    const { data, error } = await supabase.auth.admin.createUser({
-      email,
-      email_confirm: true
-    })
+    // Trigger Magic Link login
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: "magiclink",
+      email
+    });
 
-    if (error) {
-      return { statusCode: 400, body: JSON.stringify({ error: error.message }) }
-    }
+    if (error) return { statusCode: 400, body: JSON.stringify({ error: error.message }) };
 
-    return { statusCode: 200, body: JSON.stringify({ success: true, data }) }
+    return { statusCode: 200, body: JSON.stringify({ success: true, data }) };
   } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) }
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
-}
+};
