@@ -101,6 +101,9 @@ importers:
       '@supabase/functions-js':
         specifier: ^2.74.0
         version: 2.74.0
+      '@supabase/node-fetch':
+        specifier: ^2.6.15
+        version: 2.6.15
       '@supabase/postgrest-js':
         specifier: ^2.75.0
         version: 2.75.0
