@@ -1,8 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useReducer, useEffect } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "../lib/supabase";
+import { apiFetch } from "../lib/apiClient"; // We'll create this helper below
+
+interface User {
+  email: string;
+  id?: number;
+  name?: string;
+}
 
 interface AuthState {
   user: User | null;
@@ -21,8 +26,8 @@ type AuthAction =
 
 interface AuthContextProps {
   state: AuthState;
-  loginWithEmailOtp: (email: string) => Promise<{ success: boolean; error?: string }>;
   sendOTP: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOTP: (email: string, otp: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -56,40 +61,49 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Check session on mount
+  // Check existing JWT on app load
   useEffect(() => {
-    const checkSession = async () => {
-      dispatch({ type: "SET_LOADING", payload: true });
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) console.error("Supabase getSession error:", error);
-      if (session?.user) dispatch({ type: "SET_USER", payload: session.user });
-      dispatch({ type: "SET_LOADING", payload: false });
+    const checkAuth = async () => {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        try {
+          const res = await apiFetch("/protected/", {
+            method: "GET",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (res?.user) {
+            dispatch({ type: "SET_USER", payload: res.user });
+          } else {
+            dispatch({ type: "LOGOUT" });
+          }
+        } catch {
+          dispatch({ type: "LOGOUT" });
+        }
+      } else {
+        dispatch({ type: "LOGOUT" });
+      }
     };
-    checkSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) dispatch({ type: "SET_USER", payload: session.user });
-      else dispatch({ type: "LOGOUT" });
-    });
-
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
-  // Send OTP via Netlify
+  // Send OTP
   const sendOTP = async (email: string) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
-      const res = await fetch("/.netlify/functions/send-otp", {
+      const res = await apiFetch("/send-otp/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) throw new Error(data.error || "Failed to send OTP");
 
-      dispatch({ type: "SET_PENDING_EMAIL", payload: email });
-      dispatch({ type: "SET_OTP_STEP", payload: "email-sent" });
-      return { success: true };
+      if (res.success) {
+        dispatch({ type: "SET_PENDING_EMAIL", payload: email });
+        dispatch({ type: "SET_OTP_STEP", payload: "email-sent" });
+        return { success: true };
+      } else {
+        throw new Error(res.error || "Failed to send OTP");
+      }
     } catch (err: any) {
       return { success: false, error: err.message };
     } finally {
@@ -97,17 +111,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithEmailOtp = async (email: string) => {
-    return sendOTP(email);
+  // Verify OTP (Login)
+  const verifyOTP = async (email: string, otp: string) => {
+    try {
+      dispatch({ type: "SET_LOADING", payload: true });
+      const res = await apiFetch("/login/", {
+        method: "POST",
+        body: JSON.stringify({ email, otp }),
+      });
+
+      if (res.tokens) {
+        // Save tokens from Django
+        localStorage.setItem("accessToken", res.tokens.access);
+        localStorage.setItem("refreshToken", res.tokens.refresh);
+
+        dispatch({
+          type: "SET_USER",
+          payload: { email: res.user.email, id: res.user.id },
+        });
+        dispatch({ type: "SET_OTP_STEP", payload: "verified" });
+
+        return { success: true };
+      } else {
+        throw new Error(res.error || "Invalid OTP");
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    } finally {
+      dispatch({ type: "SET_LOADING", payload: false });
+    }
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     dispatch({ type: "LOGOUT" });
   };
 
   return (
-    <AuthContext.Provider value={{ state, loginWithEmailOtp, sendOTP, logout }}>
+    <AuthContext.Provider value={{ state, sendOTP, verifyOTP, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build": "vite build",
@@ -84,7 +84,6 @@
     "tsx": "latest",
     "typescript-eslint": "latest",
     "vaul": "^0.9.9",
-    "whatwg-url": "^15.1.0",
     "ws": "^8.18.3",
     "yaml": "latest",
     "zod": "^3.25.76"
